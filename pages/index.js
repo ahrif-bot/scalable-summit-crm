@@ -12,23 +12,32 @@ export default function Home() {
   const [search, setSearch]   = useState('')
   const [sort, setSort]       = useState('reactions-desc')
   const [toast, setToast]     = useState(null)
+  const [pendingCount, setPendingCount] = useState(0)
 
+  // Auth — don't redirect, just track who's logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { window.location.href = '/login'; return }
-      setUser(session.user)
-      setIsAdmin(session.user.email === ADMIN_EMAIL)
+      if (session) {
+        setUser(session.user)
+        setIsAdmin(session.user.email === ADMIN_EMAIL)
+      }
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) { window.location.href = '/login' }
+      if (session) {
+        setUser(session.user)
+        setIsAdmin(session.user.email === ADMIN_EMAIL)
+      } else {
+        setUser(null)
+        setIsAdmin(false)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
 
+  // Always load all posts — public or logged in
   useEffect(() => {
-    if (!user) return
     fetchPosts()
-  }, [user])
+  }, [])
 
   async function fetchPosts() {
     setLoading(true)
@@ -56,9 +65,19 @@ export default function Home() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  async function fetchPendingCount() {
+    const { count } = await supabase
+      .from('pending_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    setPendingCount(count || 0)
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    setUser(null)
+    setIsAdmin(false)
+    showToast('Signed out')
   }
 
   const filtered = posts.filter(p => {
@@ -84,6 +103,8 @@ export default function Home() {
     comments: posts.reduce((s, p) => s + (p.comments || 0), 0),
     reposts: posts.reduce((s, p) => s + (p.reposts || 0), 0),
   }
+
+  const hasOwnRow = user && posts.some(p => p.owner_email?.toLowerCase() === user?.email?.toLowerCase())
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--navy)' }}>
@@ -121,9 +142,22 @@ export default function Home() {
           ))}
         </div>
 
+        {/* Auth section top right */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user?.email}</span>
-          <button onClick={handleSignOut} style={styles.signOutBtn}>Sign out</button>
+          <a href="/submit" style={styles.submitBtn2}>+ Submit Post</a>
+          {isAdmin && (
+            <a href="/admin/pending" style={styles.pendingBtn}>
+              Pending {pendingCount > 0 && <span style={{ background: '#ff5566', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10, marginLeft: 4 }}>{pendingCount}</span>}
+            </a>
+          )}
+          {user ? (
+            <>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user.email}</span>
+              <button onClick={handleSignOut} style={styles.signOutBtn}>Sign out</button>
+            </>
+          ) : (
+            <a href="/login" style={styles.signInBtn}>Sign in →</a>
+          )}
         </div>
       </header>
 
@@ -139,15 +173,24 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Non-admin notice */}
-      {!isAdmin && (
+      {/* Context banner */}
+      {!user && (
         <div style={styles.noticeBanner}>
-          <span>👀 You can view all posts below.</span>
-          <span style={{ color: 'var(--neon)', marginLeft: 8 }}>
-            {posts.some(p => p.owner_email?.toLowerCase() === user?.email?.toLowerCase())
-              ? '✏ Your row is highlighted — click Edit to update it.'
-              : 'Your row has not been linked yet. Contact the admin to get access.'}
-          </span>
+          <span>👀 Viewing all posts.</span>
+          <a href="/login" style={{ color: 'var(--neon)', marginLeft: 8, textDecoration: 'underline' }}>
+            Sign in to edit your post →
+          </a>
+        </div>
+      )}
+      {user && !isAdmin && hasOwnRow && (
+        <div style={styles.noticeBanner}>
+          <span style={{ color: 'var(--neon)' }}>✏ Your row is highlighted below — click Edit to update it.</span>
+        </div>
+      )}
+      {user && !isAdmin && !hasOwnRow && (
+        <div style={styles.noticeBanner}>
+          <span>Your email isn't linked to a row yet.</span>
+          <span style={{ color: 'var(--muted)', marginLeft: 8 }}>Contact the admin to get access.</span>
         </div>
       )}
 
@@ -170,11 +213,10 @@ export default function Home() {
         <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>{sorted.length} of {posts.length} posts</span>
       </div>
 
-      {/* Table — everyone sees it, only own row is editable */}
       <AdminTable
         posts={sorted}
         onSave={handleSave}
-        currentUserEmail={user?.email}
+        currentUserEmail={user?.email || null}
         isAdmin={isAdmin}
       />
     </div>
@@ -204,7 +246,22 @@ const styles = {
   signOutBtn: {
     background: 'transparent', color: 'var(--muted)',
     border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6,
-    padding: '6px 14px', fontSize: 12,
+    padding: '6px 14px', fontSize: 12, cursor: 'pointer',
+  },
+  submitBtn2: {
+    background: 'transparent', color: 'var(--neon)',
+    border: '1px solid rgba(200,255,0,0.4)', borderRadius: 6,
+    padding: '6px 14px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+  },
+  pendingBtn: {
+    background: 'transparent', color: 'var(--light)',
+    border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+    padding: '6px 14px', fontSize: 12, display: 'flex', alignItems: 'center',
+  },
+  signInBtn: {
+    background: 'var(--neon)', color: 'var(--navy)',
+    fontWeight: 700, fontSize: 12, padding: '7px 16px',
+    borderRadius: 6, whiteSpace: 'nowrap',
   },
   topBanner: {
     display: 'flex', gap: 12, padding: '14px 24px',
@@ -215,11 +272,9 @@ const styles = {
     borderRadius: 8, padding: '10px 16px', minWidth: 160, flexShrink: 0,
   },
   noticeBanner: {
-    background: 'rgba(200,255,0,0.06)',
-    borderBottom: '1px solid rgba(200,255,0,0.12)',
-    padding: '10px 24px',
-    fontSize: 13,
-    color: 'var(--light)',
+    background: 'rgba(200,255,0,0.05)',
+    borderBottom: '1px solid rgba(200,255,0,0.1)',
+    padding: '10px 24px', fontSize: 13, color: 'var(--light)',
   },
   toolbar: {
     padding: '12px 24px', display: 'flex', gap: 12, alignItems: 'center',
@@ -227,3 +282,4 @@ const styles = {
     flexWrap: 'wrap',
   },
 }
+// Note: submit button and pending link added via header update below
