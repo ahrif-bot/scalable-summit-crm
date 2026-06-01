@@ -12,12 +12,12 @@ export default function AdminTable({ posts, onSave }) {
       title: post.title || '',
       company: post.company || '',
       post_link: post.post_link || '',
-      summary: post.summary || '',
-      tagged: post.tagged || '',
+      post_summary: post.post_summary || '',
+      tagged_people: post.tagged_people || '',
       reactions: post.reactions || 0,
       comments: post.comments || 0,
       reposts: post.reposts || 0,
-      user_email: post.user_email || '',
+      owner_email: post.owner_email || '',
     })
   }
 
@@ -41,7 +41,7 @@ export default function AdminTable({ posts, onSave }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, minWidth: 1100 }}>
         <thead>
           <tr>
-            {['#','Name','Company','User Email','Summary','Tagged','React','Comm','Rep','Link','Actions'].map(h => (
+            {['#','Name','Company','Owner Email','Summary','Tagged','React','Comm','Rep','Link','Actions'].map(h => (
               <th key={h} style={styles.th}>{h}</th>
             ))}
           </tr>
@@ -53,7 +53,6 @@ export default function AdminTable({ posts, onSave }) {
               <tr key={post.id} style={{ background: isEditing ? 'rgba(200,255,0,0.04)' : idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <td style={{ ...styles.td, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', fontSize: 12, textAlign: 'center', width: 36 }}>{idx + 1}</td>
 
-                {/* Name */}
                 <td style={{ ...styles.td, minWidth: 140 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -69,7 +68,6 @@ export default function AdminTable({ posts, onSave }) {
                   )}
                 </td>
 
-                {/* Company */}
                 <td style={{ ...styles.td, minWidth: 120, color: 'var(--muted)', fontSize: 13 }}>
                   {isEditing
                     ? <input value={editForm.company} onChange={e => upd('company', e.target.value)} style={styles.input} />
@@ -77,33 +75,29 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
-                {/* User email */}
                 <td style={{ ...styles.td, minWidth: 160 }}>
                   {isEditing
-                    ? <input value={editForm.user_email} onChange={e => upd('user_email', e.target.value)} placeholder="user@email.com" style={{ ...styles.input, fontSize: 11 }} />
-                    : <span style={{ fontSize: 11, color: post.user_email ? 'var(--neon)' : 'var(--muted)' }}>
-                        {post.user_email || '— not linked —'}
+                    ? <input value={editForm.owner_email} onChange={e => upd('owner_email', e.target.value)} placeholder="user@email.com" style={{ ...styles.input, fontSize: 11 }} />
+                    : <span style={{ fontSize: 11, color: post.owner_email ? 'var(--neon)' : 'var(--muted)' }}>
+                        {post.owner_email || '— not linked —'}
                       </span>
                   }
                 </td>
 
-                {/* Summary */}
                 <td style={{ ...styles.td, maxWidth: 220 }}>
                   {isEditing
-                    ? <textarea value={editForm.summary} onChange={e => upd('summary', e.target.value)} rows={4} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
-                    : <div style={styles.clamp}>{post.summary}</div>
+                    ? <textarea value={editForm.post_summary} onChange={e => upd('post_summary', e.target.value)} rows={4} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
+                    : <div style={styles.clamp}>{post.post_summary}</div>
                   }
                 </td>
 
-                {/* Tagged */}
                 <td style={{ ...styles.td, maxWidth: 180 }}>
                   {isEditing
-                    ? <textarea value={editForm.tagged} onChange={e => upd('tagged', e.target.value)} rows={3} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
-                    : <div style={{ ...styles.clamp, fontSize: 11, color: 'var(--muted)' }}>{post.tagged}</div>
+                    ? <textarea value={editForm.tagged_people} onChange={e => upd('tagged_people', e.target.value)} rows={3} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
+                    : <div style={{ ...styles.clamp, fontSize: 11, color: 'var(--muted)' }}>{post.tagged_people}</div>
                   }
                 </td>
 
-                {/* Metrics */}
                 {['reactions','comments','reposts'].map((field, fi) => {
                   const colors = ['var(--neon)', 'var(--teal)', 'var(--gold)']
                   return (
@@ -117,7 +111,6 @@ export default function AdminTable({ posts, onSave }) {
                   )
                 })}
 
-                {/* Link */}
                 <td style={{ ...styles.td, textAlign: 'center', width: 60 }}>
                   {post.post_link
                     ? <a href={post.post_link} target="_blank" rel="noreferrer" style={{ color: 'var(--muted)', fontSize: 11, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '3px 8px', display: 'inline-block' }}>↗</a>
@@ -125,7 +118,6 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
-                {/* Actions */}
                 <td style={{ ...styles.td, textAlign: 'center', width: 110 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>

@@ -14,7 +14,6 @@ export default function Home() {
   const [sort, setSort]       = useState('reactions-desc')
   const [toast, setToast]     = useState(null)
 
-  // Auth check
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { window.location.href = '/login'; return }
@@ -27,7 +26,6 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Load posts
   useEffect(() => {
     if (!user) return
     fetchPosts()
@@ -39,7 +37,11 @@ export default function Home() {
       .from('linkedin_posts')
       .select('*')
       .order('reactions', { ascending: false })
-    if (!error) setPosts(data || [])
+    if (error) {
+      console.error('Fetch error:', error)
+      showToast('Error loading posts: ' + error.message, true)
+    }
+    setPosts(data || [])
     setLoading(false)
   }
 
@@ -52,7 +54,7 @@ export default function Home() {
 
   function showToast(msg, isError = false) {
     setToast({ msg, isError })
-    setTimeout(() => setToast(null), 2500)
+    setTimeout(() => setToast(null), 3000)
   }
 
   async function handleSignOut() {
@@ -60,14 +62,13 @@ export default function Home() {
     window.location.href = '/login'
   }
 
-  // Filter + sort
   const filtered = posts.filter(p => {
     const q = search.toLowerCase()
     if (!q) return true
     return `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
       (p.company || '').toLowerCase().includes(q) ||
-      (p.summary || '').toLowerCase().includes(q) ||
-      (p.tagged || '').toLowerCase().includes(q)
+      (p.post_summary || '').toLowerCase().includes(q) ||
+      (p.tagged_people || '').toLowerCase().includes(q)
   })
 
   const sorted = [...filtered].sort((a, b) => {
@@ -85,18 +86,18 @@ export default function Home() {
     reposts: posts.reduce((s, p) => s + (p.reposts || 0), 0),
   }
 
-  // Non-admin: find user's own post(s)
-  const myPosts = posts.filter(p => p.user_email === user?.email)
+  const myPosts = posts.filter(p =>
+    p.owner_email && p.owner_email.toLowerCase() === user?.email?.toLowerCase()
+  )
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--navy)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--navy)', flexDirection: 'column', gap: 16 }}>
       <div style={{ color: 'var(--neon)', fontFamily: 'DM Serif Display, serif', fontSize: 24 }}>Loading…</div>
     </div>
   )
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 999,
@@ -107,7 +108,6 @@ export default function Home() {
         }}>{toast.msg}</div>
       )}
 
-      {/* Header */}
       <header style={styles.header}>
         <div style={styles.logo}>
           <span style={{ color: 'var(--neon)', fontFamily: 'DM Serif Display, serif', fontStyle: 'italic' }}>Scalable</span>
@@ -133,10 +133,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── ADMIN VIEW ── */}
       {isAdmin ? (
         <>
-          {/* Top 5 banner */}
           <div style={styles.topBanner}>
             {[...posts].sort((a,b) => b.reactions - a.reactions).slice(0,5).map((p, i) => (
               <div key={p.id} style={styles.topCard}>
@@ -148,7 +146,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Toolbar */}
           <div style={styles.toolbar}>
             <div style={{ position: 'relative', flex: 1, maxWidth: 340 }}>
               <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 13 }}>🔍</span>
@@ -163,7 +160,6 @@ export default function Home() {
               <option value="comments-desc">↓ Comments</option>
               <option value="reposts-desc">↓ Reposts</option>
               <option value="name-asc">A–Z Name</option>
-              <option value="id-asc">Original Order</option>
             </select>
             <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>{sorted.length} of {posts.length} posts</span>
           </div>
@@ -171,7 +167,6 @@ export default function Home() {
           <AdminTable posts={sorted} onSave={handleSave} />
         </>
       ) : (
-        /* ── USER VIEW ── */
         <div style={{ padding: '40px 24px', maxWidth: 800, margin: '0 auto' }}>
           {myPosts.length === 0 ? (
             <div style={styles.noPost}>
