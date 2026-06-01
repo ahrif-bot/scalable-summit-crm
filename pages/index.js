@@ -117,7 +117,7 @@ export default function Home() {
           <a href="/search" style={styles.navLink}>AI Search</a>
           <a href="/reports" style={styles.navLink}>Reports</a>
           {isAdmin && (
-            <a href="/admin/pending" style={styles.navLink}>
+            <a href="/Admin/pending" style={styles.navLink}>
               Pending {pendingCount > 0 && <span style={styles.badge}>{pendingCount}</span>}
             </a>
           )}
