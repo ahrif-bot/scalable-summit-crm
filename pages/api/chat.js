@@ -4,12 +4,15 @@ export default async function handler(req, res) {
   const { question, systemPrompt } = req.body
   if (!question) return res.status(400).json({ error: 'Question required' })
 
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' })
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -21,10 +24,20 @@ export default async function handler(req, res) {
     })
 
     const data = await response.json()
+
+    // Return full error details if something went wrong
+    if (!response.ok) {
+      return res.status(500).json({ 
+        error: 'Anthropic API error', 
+        status: response.status,
+        details: data 
+      })
+    }
+
     const answer = data.content?.[0]?.text || 'No response generated.'
     res.status(200).json({ answer })
   } catch (err) {
     console.error('Chat error:', err)
-    res.status(500).json({ error: 'Failed to generate response' })
+    res.status(500).json({ error: err.message })
   }
 }
