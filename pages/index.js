@@ -36,7 +36,7 @@ export default function Home() {
   async function fetchPosts() {
     setLoading(true)
     const { data, error } = await supabase
-      .from('posts')
+      .from('linkedin_posts')
       .select('*')
       .order('reactions', { ascending: false })
     if (!error) setPosts(data || [])
@@ -44,7 +44,7 @@ export default function Home() {
   }
 
   async function handleSave(id, updates) {
-    const { error } = await supabase.from('posts').update(updates).eq('id', id)
+    const { error } = await supabase.from('linkedin_posts').update(updates).eq('id', id)
     if (error) { showToast('Error saving: ' + error.message, true); return }
     setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
     showToast('✓ Saved successfully')
