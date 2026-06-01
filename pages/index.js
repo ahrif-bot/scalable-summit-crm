@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import PostRow from '../components/PostRow'
 import AdminTable from '../components/AdminTable'
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
@@ -86,12 +85,8 @@ export default function Home() {
     reposts: posts.reduce((s, p) => s + (p.reposts || 0), 0),
   }
 
-  const myPosts = posts.filter(p =>
-    p.owner_email && p.owner_email.toLowerCase() === user?.email?.toLowerCase()
-  )
-
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--navy)', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--navy)' }}>
       <div style={{ color: 'var(--neon)', fontFamily: 'DM Serif Display, serif', fontSize: 24 }}>Loading…</div>
     </div>
   )
@@ -108,6 +103,7 @@ export default function Home() {
         }}>{toast.msg}</div>
       )}
 
+      {/* Header */}
       <header style={styles.header}>
         <div style={styles.logo}>
           <span style={{ color: 'var(--neon)', fontFamily: 'DM Serif Display, serif', fontStyle: 'italic' }}>Scalable</span>
@@ -116,16 +112,14 @@ export default function Home() {
           {isAdmin && <span style={styles.adminBadge}>ADMIN</span>}
         </div>
 
-        {isAdmin && (
-          <div style={styles.headerStats}>
-            {[['Posts', posts.length], ['Reactions', totals.reactions.toLocaleString()], ['Comments', totals.comments], ['Reposts', totals.reposts]].map(([l, v]) => (
-              <div key={l} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 16, fontWeight: 600, color: 'var(--neon)' }}>{v}</div>
-                <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={styles.headerStats}>
+          {[['Posts', posts.length], ['Reactions', totals.reactions.toLocaleString()], ['Comments', totals.comments], ['Reposts', totals.reposts]].map(([l, v]) => (
+            <div key={l} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 16, fontWeight: 600, color: 'var(--neon)' }}>{v}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{l}</div>
+            </div>
+          ))}
+        </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user?.email}</span>
@@ -133,68 +127,56 @@ export default function Home() {
         </div>
       </header>
 
-      {isAdmin ? (
-        <>
-          <div style={styles.topBanner}>
-            {[...posts].sort((a,b) => b.reactions - a.reactions).slice(0,5).map((p, i) => (
-              <div key={p.id} style={styles.topCard}>
-                <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 3 }}>#{i+1} by reactions</div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{p.first_name} {p.last_name}</div>
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 20, fontWeight: 700, color: 'var(--neon)' }}>{p.reactions}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>{p.comments} comments · {p.reposts} reposts</div>
-              </div>
-            ))}
+      {/* Top 5 banner */}
+      <div style={styles.topBanner}>
+        {[...posts].sort((a,b) => b.reactions - a.reactions).slice(0,5).map((p, i) => (
+          <div key={p.id} style={styles.topCard}>
+            <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 3 }}>#{i+1} by reactions</div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{p.first_name} {p.last_name}</div>
+            <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 20, fontWeight: 700, color: 'var(--neon)' }}>{p.reactions}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>{p.comments} comments · {p.reposts} reposts</div>
           </div>
+        ))}
+      </div>
 
-          <div style={styles.toolbar}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: 340 }}>
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 13 }}>🔍</span>
-              <input type="search" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search name, company, summary, tagged…"
-                style={{ paddingLeft: 32, background: 'var(--card)', border: '1px solid rgba(255,255,255,0.08)' }} />
-            </div>
-            <select value={sort} onChange={e => setSort(e.target.value)}
-              style={{ width: 'auto', background: 'var(--card)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <option value="reactions-desc">↓ Reactions</option>
-              <option value="reactions-asc">↑ Reactions</option>
-              <option value="comments-desc">↓ Comments</option>
-              <option value="reposts-desc">↓ Reposts</option>
-              <option value="name-asc">A–Z Name</option>
-            </select>
-            <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>{sorted.length} of {posts.length} posts</span>
-          </div>
-
-          <AdminTable posts={sorted} onSave={handleSave} />
-        </>
-      ) : (
-        <div style={{ padding: '40px 24px', maxWidth: 800, margin: '0 auto' }}>
-          {myPosts.length === 0 ? (
-            <div style={styles.noPost}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>👋</div>
-              <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 26, color: 'var(--neon)', marginBottom: 8 }}>
-                Welcome to the Scalable Summit Tracker
-              </h2>
-              <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, maxWidth: 480 }}>
-                Your post hasn't been linked to your account yet. The admin will connect your email
-                (<strong style={{ color: 'var(--white)' }}>{user?.email}</strong>) to your row.
-                Check back soon!
-              </p>
-            </div>
-          ) : (
-            <>
-              <h1 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 28, color: 'var(--neon)', marginBottom: 6, fontStyle: 'italic' }}>
-                Your Post{myPosts.length > 1 ? 's' : ''}
-              </h1>
-              <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 32 }}>
-                Update your post details below — changes save instantly.
-              </p>
-              {myPosts.map(post => (
-                <PostRow key={post.id} post={post} onSave={handleSave} />
-              ))}
-            </>
-          )}
+      {/* Non-admin notice */}
+      {!isAdmin && (
+        <div style={styles.noticeBanner}>
+          <span>👀 You can view all posts below.</span>
+          <span style={{ color: 'var(--neon)', marginLeft: 8 }}>
+            {posts.some(p => p.owner_email?.toLowerCase() === user?.email?.toLowerCase())
+              ? '✏ Your row is highlighted — click Edit to update it.'
+              : 'Your row has not been linked yet. Contact the admin to get access.'}
+          </span>
         </div>
       )}
+
+      {/* Toolbar */}
+      <div style={styles.toolbar}>
+        <div style={{ position: 'relative', flex: 1, maxWidth: 340 }}>
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 13 }}>🔍</span>
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name, company, summary, tagged…"
+            style={{ paddingLeft: 32, background: 'var(--card)', border: '1px solid rgba(255,255,255,0.08)' }} />
+        </div>
+        <select value={sort} onChange={e => setSort(e.target.value)}
+          style={{ width: 'auto', background: 'var(--card)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <option value="reactions-desc">↓ Reactions</option>
+          <option value="reactions-asc">↑ Reactions</option>
+          <option value="comments-desc">↓ Comments</option>
+          <option value="reposts-desc">↓ Reposts</option>
+          <option value="name-asc">A–Z Name</option>
+        </select>
+        <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>{sorted.length} of {posts.length} posts</span>
+      </div>
+
+      {/* Table — everyone sees it, only own row is editable */}
+      <AdminTable
+        posts={sorted}
+        onSave={handleSave}
+        currentUserEmail={user?.email}
+        isAdmin={isAdmin}
+      />
     </div>
   )
 }
@@ -232,13 +214,16 @@ const styles = {
     background: 'var(--card)', border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: 8, padding: '10px 16px', minWidth: 160, flexShrink: 0,
   },
+  noticeBanner: {
+    background: 'rgba(200,255,0,0.06)',
+    borderBottom: '1px solid rgba(200,255,0,0.12)',
+    padding: '10px 24px',
+    fontSize: 13,
+    color: 'var(--light)',
+  },
   toolbar: {
     padding: '12px 24px', display: 'flex', gap: 12, alignItems: 'center',
     background: '#0f1e38', borderBottom: '1px solid rgba(255,255,255,0.04)',
     flexWrap: 'wrap',
-  },
-  noPost: {
-    background: 'var(--card)', border: '1px solid var(--border)',
-    borderRadius: 14, padding: '48px 40px', textAlign: 'center',
   },
 }

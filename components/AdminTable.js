@@ -1,8 +1,13 @@
 import { useState } from 'react'
 
-export default function AdminTable({ posts, onSave }) {
+export default function AdminTable({ posts, onSave, currentUserEmail, isAdmin }) {
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({})
+
+  function canEdit(post) {
+    if (isAdmin) return true
+    return post.owner_email && post.owner_email.toLowerCase() === currentUserEmail?.toLowerCase()
+  }
 
   function startEdit(post) {
     setEditingId(post.id)
@@ -41,7 +46,8 @@ export default function AdminTable({ posts, onSave }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, minWidth: 1100 }}>
         <thead>
           <tr>
-            {['#','Name','Company','Owner Email','Summary','Tagged','React','Comm','Rep','Link','Actions'].map(h => (
+            {['#', 'Name', 'Company', isAdmin ? 'Owner Email' : null, 'Summary', 'Tagged', 'React', 'Comm', 'Rep', 'Link', 'Actions']
+              .filter(Boolean).map(h => (
               <th key={h} style={styles.th}>{h}</th>
             ))}
           </tr>
@@ -49,10 +55,23 @@ export default function AdminTable({ posts, onSave }) {
         <tbody>
           {posts.map((post, idx) => {
             const isEditing = editingId === post.id
+            const userCanEdit = canEdit(post)
+            const isOwnRow = post.owner_email?.toLowerCase() === currentUserEmail?.toLowerCase()
+
             return (
-              <tr key={post.id} style={{ background: isEditing ? 'rgba(200,255,0,0.04)' : idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <tr key={post.id} style={{
+                background: isEditing
+                  ? 'rgba(200,255,0,0.04)'
+                  : isOwnRow && !isAdmin
+                  ? 'rgba(200,255,0,0.02)'
+                  : idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                outline: isOwnRow && !isAdmin ? '1px solid rgba(200,255,0,0.15)' : 'none',
+              }}>
+
                 <td style={{ ...styles.td, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', fontSize: 12, textAlign: 'center', width: 36 }}>{idx + 1}</td>
 
+                {/* Name */}
                 <td style={{ ...styles.td, minWidth: 140 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -62,12 +81,16 @@ export default function AdminTable({ posts, onSave }) {
                     </div>
                   ) : (
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{post.first_name} {post.last_name}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {post.first_name} {post.last_name}
+                        {isOwnRow && !isAdmin && <span style={{ fontSize: 9, background: 'var(--neon)', color: 'var(--navy)', padding: '1px 5px', borderRadius: 3, fontWeight: 800 }}>YOU</span>}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{post.title}</div>
                     </div>
                   )}
                 </td>
 
+                {/* Company */}
                 <td style={{ ...styles.td, minWidth: 120, color: 'var(--muted)', fontSize: 13 }}>
                   {isEditing
                     ? <input value={editForm.company} onChange={e => upd('company', e.target.value)} style={styles.input} />
@@ -75,15 +98,19 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
-                <td style={{ ...styles.td, minWidth: 160 }}>
-                  {isEditing
-                    ? <input value={editForm.owner_email} onChange={e => upd('owner_email', e.target.value)} placeholder="user@email.com" style={{ ...styles.input, fontSize: 11 }} />
-                    : <span style={{ fontSize: 11, color: post.owner_email ? 'var(--neon)' : 'var(--muted)' }}>
-                        {post.owner_email || '— not linked —'}
-                      </span>
-                  }
-                </td>
+                {/* Owner Email — admin only */}
+                {isAdmin && (
+                  <td style={{ ...styles.td, minWidth: 160 }}>
+                    {isEditing
+                      ? <input value={editForm.owner_email} onChange={e => upd('owner_email', e.target.value)} placeholder="user@email.com" style={{ ...styles.input, fontSize: 11 }} />
+                      : <span style={{ fontSize: 11, color: post.owner_email ? 'var(--neon)' : 'var(--muted)' }}>
+                          {post.owner_email || '— not linked —'}
+                        </span>
+                    }
+                  </td>
+                )}
 
+                {/* Summary */}
                 <td style={{ ...styles.td, maxWidth: 220 }}>
                   {isEditing
                     ? <textarea value={editForm.post_summary} onChange={e => upd('post_summary', e.target.value)} rows={4} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
@@ -91,6 +118,7 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
+                {/* Tagged */}
                 <td style={{ ...styles.td, maxWidth: 180 }}>
                   {isEditing
                     ? <textarea value={editForm.tagged_people} onChange={e => upd('tagged_people', e.target.value)} rows={3} style={{ ...styles.input, fontSize: 11, resize: 'vertical' }} />
@@ -98,7 +126,8 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
-                {['reactions','comments','reposts'].map((field, fi) => {
+                {/* Metrics */}
+                {['reactions', 'comments', 'reposts'].map((field, fi) => {
                   const colors = ['var(--neon)', 'var(--teal)', 'var(--gold)']
                   return (
                     <td key={field} style={{ ...styles.td, textAlign: 'center', width: 70 }}>
@@ -111,6 +140,7 @@ export default function AdminTable({ posts, onSave }) {
                   )
                 })}
 
+                {/* Link */}
                 <td style={{ ...styles.td, textAlign: 'center', width: 60 }}>
                   {post.post_link
                     ? <a href={post.post_link} target="_blank" rel="noreferrer" style={{ color: 'var(--muted)', fontSize: 11, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '3px 8px', display: 'inline-block' }}>↗</a>
@@ -118,14 +148,17 @@ export default function AdminTable({ posts, onSave }) {
                   }
                 </td>
 
+                {/* Actions */}
                 <td style={{ ...styles.td, textAlign: 'center', width: 110 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
                       <button onClick={() => saveEdit(post.id)} style={styles.saveBtn}>Save</button>
                       <button onClick={cancelEdit} style={styles.cancelBtn}>✕</button>
                     </div>
-                  ) : (
+                  ) : userCanEdit ? (
                     <button onClick={() => startEdit(post)} style={styles.editBtn}>✏ Edit</button>
+                  ) : (
+                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>—</span>
                   )}
                 </td>
               </tr>
