@@ -5,12 +5,13 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL
 
 const SUGGESTED = [
   "Which post generated the most engagement and why?",
-  "What posting frameworks drove the highest reach?",
-  "Which companies had the most mentions across all posts?",
-  "Who are the top 5 most influential attendees by reactions?",
-  "What were the most common themes across all posts?",
-  "Which sponsors got the most organic coverage?",
-  "What was the optimal time to post after the event?",
+  "What posting frameworks drove the highest reach at Scalable Summit?",
+  "Which sponsors got the most organic coverage and what does that tell us about event ROI?",
+  "Who are the top 5 most influential attendees by total engagement?",
+  "What were the most common themes and why do they resonate with creator economy audiences?",
+  "How does beehiiv's presence at Scalable Summit compare to its broader market position?",
+  "What would you recommend to a first-time event sponsor based on this data?",
+  "Which attendees showed the strongest signs of being future thought leaders?",
 ]
 
 export default function Search() {
@@ -54,7 +55,7 @@ export default function Search() {
     setLoading(true)
 
     try {
-      // Build context from all posts + events
+      // Build structured context to pass to the API
       const eventMap = Object.fromEntries(events.map(e => [e.id, e.name]))
       const context = posts.map(p => ({
         name: `${p.first_name} ${p.last_name}`,
@@ -66,21 +67,13 @@ export default function Search() {
         reactions: p.reactions,
         comments: p.comments,
         reposts: p.reposts,
+        post_link: p.post_link,
       }))
-
-      const systemPrompt = `You are an expert analyst for Fruitful Intelligence, a LinkedIn coverage analytics platform for creator economy events.
-
-You have access to data from ${posts.length} LinkedIn posts across ${events.length} events: ${events.map(e => e.name).join(', ')}.
-
-Here is the full dataset:
-${JSON.stringify(context, null, 2)}
-
-Answer questions about this data with specific names, numbers, and insights. Be direct and analytical. When citing engagement numbers, be precise. Format your response clearly with specific examples from the data. Keep responses focused and under 400 words unless the question requires more detail.`
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, systemPrompt }),
+        body: JSON.stringify({ question, posts: context, events }),
       })
 
       const data = await response.json()
